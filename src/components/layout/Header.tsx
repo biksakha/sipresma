@@ -71,11 +71,11 @@ export const Header: React.FC<Props> = ({
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
-        {/* Database Status indicator: Firebase Firestore (Disconnected from Supabase) */}
+        {/* Database Status indicator: Vercel & GitHub Standalone (Bebas Kuota) */}
         <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 bg-emerald-50/70 border border-emerald-200/60 px-2.5 py-1 rounded-lg">
           <Database className="h-3.5 w-3.5 text-emerald-700" />
           <span className="text-[11px] font-bold text-emerald-900">
-            Firebase Firestore
+            Vercel & GitHub (Bebas Kuota)
           </span>
         </div>
 

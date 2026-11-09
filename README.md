@@ -60,12 +60,10 @@ Proyek ini telah dikonfigurasi secara lengkap untuk dapat di-deploy ke **Vercel*
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
    - **Install Command**: `npm install`
-5. *(Opsional)* Jika ingin mengatur Environment Variables di Vercel:
-   - `VITE_FIREBASE_PROJECT_ID`: `jovial-citron-msjh2`
-   - `VITE_FIREBASE_DATABASE_ID`: `ai-studio-sipresmapresensi-839a9f3e-c993-4ff5-983b-75c7dfe22d09`
-   - `VITE_FIREBASE_API_KEY`: *(sesuai firebase-applet-config.json)*
-   *(Catatan: Tanpa mengisi environment variables pun, Vercel sudah otomatis membaca konfigurasi terpusat dari `firebase-applet-config.json`).*
-6. Klik **Deploy**.
+5. **Environment Variables**:
+   - **TIDAK MEMERLUKAN API KEY APAPUN!**
+   - Anda tidak perlu menambahkan variabel Firebase atau Supabase karena aplikasi beroperasi secara mandiri dan 100% bebas kuota.
+6. Klik tombol **Deploy**.
 7. Tunggu build selesai (~1 menit), dan aplikasi Anda langsung aktif di domain `https://[nama-proyek-anda].vercel.app`!
 
 ### Cara 2: Deploy melalui Vercel CLI (Terminal)

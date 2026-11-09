@@ -1,6 +1,7 @@
 /**
- * Centralized Firebase Firestore API Client for SIPRESMA MAN 4 Kediri
- * All operations query and mutate the centralized Google Cloud Firebase Firestore database.
+ * Standalone API Service for SIPRESMA MAN 4 Kediri
+ * Disconnected from Firebase & Supabase.
+ * Optimized for Vercel App & GitHub with zero quota limitations.
  */
 import {
   UserProfile,
@@ -15,18 +16,12 @@ import {
   ClassRecapItem,
   AttendanceSummary,
 } from '../types';
-import { firestoreService, ensureFirestoreCentralizedData } from './firestoreDb';
-import { testFirestoreConnection } from './firebase';
+import { standaloneService } from './standaloneDb';
 
 const TOKEN_KEY = 'sipresma_auth_token';
 const USER_KEY = 'sipresma_auth_user';
 
 const memStorage = new Map<string, string>();
-
-// Initialize and verify connection to Firestore
-testFirestoreConnection().catch((err) => {
-  console.warn('Initial Firestore ping note:', err);
-});
 
 export function getStoredToken(): string | null {
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -75,7 +70,7 @@ export const api = {
   // AUTH
   // ---------------------------------------------------------------------------
   async login(username: string, password: string): Promise<{ token: string; user: UserProfile }> {
-    const res = await firestoreService.login(username, password);
+    const res = await standaloneService.login(username, password);
     setStoredSession(res.token, res.user);
     return res;
   },
@@ -85,10 +80,10 @@ export const api = {
     if (!storedUser) {
       throw new Error('Sesi tidak ditemukan atau telah kedaluwarsa.');
     }
-    const user = await firestoreService.getUserById(storedUser.id);
+    const user = await standaloneService.getUserById(storedUser.id);
     if (!user) {
       clearStoredSession();
-      throw new Error('Akun tidak ditemukan di database terpusat.');
+      throw new Error('Akun tidak ditemukan.');
     }
     if (!user.isActive) {
       clearStoredSession();
@@ -103,61 +98,60 @@ export const api = {
     if (!storedUser) {
       throw new Error('Sesi telah kedaluwarsa. Silakan login kembali.');
     }
-    const res = await firestoreService.changePassword(storedUser.id, newPassword, currentPassword);
-    // Update local user flag
+    const res = await standaloneService.changePassword(storedUser.id, newPassword, currentPassword);
     const updatedUser = { ...storedUser, mustChangePassword: false };
     setStoredSession(getStoredToken() || 'token_' + storedUser.id, updatedUser);
     return res;
   },
 
   async resetPassword(targetUserId: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    return firestoreService.resetPassword(targetUserId, newPassword);
+    return standaloneService.resetPassword(targetUserId, newPassword);
   },
 
   // ---------------------------------------------------------------------------
   // CLASSES (DATA KELAS)
   // ---------------------------------------------------------------------------
   async getClasses(): Promise<ClassItem[]> {
-    return firestoreService.getClasses();
+    return standaloneService.getClasses();
   },
 
   async createClass(data: { className: string; gradeLevel: 'X' | 'XI' | 'XII'; secretaryUserId?: string | null }): Promise<ClassItem> {
-    return firestoreService.createClass(data);
+    return standaloneService.createClass(data);
   },
 
   async updateClass(id: string, data: Partial<ClassItem>): Promise<ClassItem> {
-    return firestoreService.updateClass(id, data);
+    return standaloneService.updateClass(id, data);
   },
 
   async deleteClass(id: string): Promise<{ success: boolean; message: string }> {
-    return firestoreService.deleteClass(id);
+    return standaloneService.deleteClass(id);
   },
 
   // ---------------------------------------------------------------------------
   // STUDENTS (DATA SISWA)
   // ---------------------------------------------------------------------------
   async getStudents(params?: { classId?: string; search?: string; isActive?: string | boolean }): Promise<Student[]> {
-    return firestoreService.getStudents(params);
+    return standaloneService.getStudents(params);
   },
 
   async createStudent(data: { nis: string; nisn?: string; fullName: string; gender: 'L' | 'P'; classId: string }): Promise<Student> {
-    return firestoreService.createStudent(data);
+    return standaloneService.createStudent(data);
   },
 
   async updateStudent(id: string, data: Partial<Student>): Promise<Student> {
-    return firestoreService.updateStudent(id, data);
+    return standaloneService.updateStudent(id, data);
   },
 
   async moveStudentClass(id: string, targetClassId: string): Promise<{ success: boolean; message: string; student: Student }> {
-    return firestoreService.moveStudentClass(id, targetClassId);
+    return standaloneService.moveStudentClass(id, targetClassId);
   },
 
   async deleteStudent(id: string): Promise<{ success: boolean; message: string }> {
-    return firestoreService.deleteStudent(id);
+    return standaloneService.deleteStudent(id);
   },
 
   async deleteAllStudents(params: { confirmText: string; deleteAttendance: boolean; classId?: string }): Promise<{ success: boolean; count: number; message: string }> {
-    return firestoreService.deleteAllStudents(params);
+    return standaloneService.deleteAllStudents(params);
   },
 
   async bulkImportStudents(rows: any[], defaultClassId?: string): Promise<{
@@ -167,48 +161,48 @@ export const api = {
     successList: Student[];
     failures: Array<{ rowNumber: number; nis?: string; name?: string; reason: string }>;
   }> {
-    return firestoreService.bulkImportStudents(rows, defaultClassId);
+    return standaloneService.bulkImportStudents(rows, defaultClassId);
   },
 
   // ---------------------------------------------------------------------------
   // ACADEMIC YEARS (TAHUN AJARAN)
   // ---------------------------------------------------------------------------
   async getAcademicYears(): Promise<AcademicYear[]> {
-    return firestoreService.getAcademicYears();
+    return standaloneService.getAcademicYears();
   },
 
   async createAcademicYear(data: { yearName: string; startDate: string; endDate: string; isActive?: boolean }): Promise<AcademicYear> {
-    return firestoreService.createAcademicYear(data);
+    return standaloneService.createAcademicYear(data);
   },
 
   async updateAcademicYear(id: string, data: Partial<AcademicYear>): Promise<AcademicYear> {
-    return firestoreService.updateAcademicYear(id, data);
+    return standaloneService.updateAcademicYear(id, data);
   },
 
   async deleteAcademicYear(id: string): Promise<{ success: boolean; message: string }> {
-    return firestoreService.deleteAcademicYear(id);
+    return standaloneService.deleteAcademicYear(id);
   },
 
   // ---------------------------------------------------------------------------
   // USERS (DATA PENGGUNA)
   // ---------------------------------------------------------------------------
   async getUsers(): Promise<UserProfile[]> {
-    return firestoreService.getUsers();
+    return standaloneService.getUsers();
   },
 
   async createUser(data: any): Promise<UserProfile> {
-    return firestoreService.createUser(data);
+    return standaloneService.createUser(data);
   },
 
   async updateUser(id: string, data: any): Promise<UserProfile> {
-    return firestoreService.updateUser(id, data);
+    return standaloneService.updateUser(id, data);
   },
 
   // ---------------------------------------------------------------------------
   // ATTENDANCE (PRESENSI)
   // ---------------------------------------------------------------------------
   async getAttendance(params?: { classId?: string; date?: string; month?: string; startDate?: string; endDate?: string }): Promise<AttendanceRecord[]> {
-    return firestoreService.getAttendance(params);
+    return standaloneService.getAttendance(params);
   },
 
   async saveBatchAttendance(data: {
@@ -216,7 +210,7 @@ export const api = {
     attendanceDate: string;
     items: Array<{ studentId: string; status: 'H' | 'S' | 'I' | 'A'; notes?: string }>;
   }): Promise<{ success: boolean; count: number; message: string }> {
-    return firestoreService.saveBatchAttendance(data);
+    return standaloneService.saveBatchAttendance(data);
   },
 
   // ---------------------------------------------------------------------------
@@ -230,7 +224,7 @@ export const api = {
     classes: ClassRecapItem[];
     unsubmittedClasses: ClassRecapItem[];
   }> {
-    return firestoreService.getDailyRecap(date);
+    return standaloneService.getDailyRecap(date);
   },
 
   async getPeriodRecap(params: { classId?: string; startDate?: string; endDate?: string; month?: string }): Promise<{
@@ -238,32 +232,47 @@ export const api = {
     summary: AttendanceSummary;
     students: StudentRecapItem[];
   }> {
-    return firestoreService.getPeriodRecap(params);
+    return standaloneService.getPeriodRecap(params);
   },
 
   // ---------------------------------------------------------------------------
   // SCHOOL SETTINGS & REPORT METADATA (TERMASUK LOGO)
   // ---------------------------------------------------------------------------
   async getSettings(): Promise<SchoolSettings> {
-    return firestoreService.getSettings();
+    return standaloneService.getSettings();
   },
 
   async updateSettings(data: Partial<SchoolSettings>): Promise<SchoolSettings> {
-    return firestoreService.updateSettings(data);
+    return standaloneService.updateSettings(data);
   },
 
   // ---------------------------------------------------------------------------
   // CALENDAR
   // ---------------------------------------------------------------------------
   async getCalendar(): Promise<SchoolCalendarDate[]> {
-    return firestoreService.getCalendar();
+    return standaloneService.getCalendar();
   },
 
   // ---------------------------------------------------------------------------
   // AUDIT LOGS (RIWAYAT AKTIVITAS)
   // ---------------------------------------------------------------------------
   async getAuditLogs(): Promise<AuditLog[]> {
-    return firestoreService.getAuditLogs();
+    return standaloneService.getAuditLogs();
+  },
+
+  // ---------------------------------------------------------------------------
+  // BACKUP & RESTORE
+  // ---------------------------------------------------------------------------
+  async exportDatabaseBackup(): Promise<string> {
+    return standaloneService.exportDatabaseBackup();
+  },
+
+  async importDatabaseBackup(jsonString: string): Promise<{ success: boolean; message: string }> {
+    return standaloneService.importDatabaseBackup(jsonString);
+  },
+
+  async resetToDefault(): Promise<{ success: boolean; message: string }> {
+    return standaloneService.resetToDefault();
   },
 
   // ---------------------------------------------------------------------------
@@ -287,6 +296,6 @@ export const api = {
     };
     systemTime: string;
   }> {
-    return firestoreService.getDatabaseStatus();
+    return standaloneService.getDatabaseStatus();
   },
 };
