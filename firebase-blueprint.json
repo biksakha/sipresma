@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile for authentication and role-based access control in SIPRESMA",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "description": "Unique username" },
+        "fullName": { "type": "string", "description": "Full name of the user" },
+        "role": { "type": "string", "enum": ["ADMIN", "SEKRETARIS", "KESISWAAN"], "description": "User role" },
+        "assignedClassId": { "type": "string", "description": "Assigned class ID if secretary" },
+        "isActive": { "type": "boolean", "description": "Account active status" },
+        "mustChangePassword": { "type": "boolean", "description": "Flag requiring password change on first login" },
+        "passwordHash": { "type": "string", "description": "Hashed password" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Updated timestamp" }
+      },
+      "required": ["username", "fullName", "role", "isActive"]
+    },
+    "ClassItem": {
+      "title": "ClassItem",
+      "description": "School class / rombel in MAN 4 Kediri",
+      "type": "object",
+      "properties": {
+        "className": { "type": "string", "description": "Name of class e.g. X-A" },
+        "gradeLevel": { "type": "string", "enum": ["X", "XI", "XII"], "description": "Grade level" },
+        "academicYearId": { "type": "string", "description": "Associated academic year" },
+        "secretaryUserId": { "type": "string", "description": "Assigned secretary user ID" },
+        "isActive": { "type": "boolean", "description": "Class active status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Updated timestamp" }
+      },
+      "required": ["className", "gradeLevel", "academicYearId", "isActive"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student data in MAN 4 Kediri",
+      "type": "object",
+      "properties": {
+        "nis": { "type": "string", "description": "Nomor Induk Siswa" },
+        "nisn": { "type": "string", "description": "Nomor Induk Siswa Nasional" },
+        "fullName": { "type": "string", "description": "Full student name" },
+        "gender": { "type": "string", "enum": ["L", "P"], "description": "Gender" },
+        "classId": { "type": "string", "description": "Class ID" },
+        "academicYearId": { "type": "string", "description": "Academic year ID" },
+        "isActive": { "type": "boolean", "description": "Student active status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Updated timestamp" }
+      },
+      "required": ["nis", "fullName", "gender", "classId", "academicYearId", "isActive"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Daily attendance record for a student",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string", "description": "Student ID" },
+        "classId": { "type": "string", "description": "Class ID" },
+        "attendanceDate": { "type": "string", "description": "Date format YYYY-MM-DD" },
+        "status": { "type": "string", "enum": ["H", "S", "I", "A"], "description": "Attendance status" },
+        "notes": { "type": "string", "description": "Notes for sickness or permission" },
+        "recordedBy": { "type": "string", "description": "User ID who recorded this attendance" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Updated timestamp" }
+      },
+      "required": ["studentId", "classId", "attendanceDate", "status", "recordedBy"]
+    },
+    "AcademicYear": {
+      "title": "AcademicYear",
+      "description": "Academic year configuration",
+      "type": "object",
+      "properties": {
+        "yearName": { "type": "string", "description": "Academic year name e.g. 2025/2026" },
+        "startDate": { "type": "string", "description": "Start date YYYY-MM-DD" },
+        "endDate": { "type": "string", "description": "End date YYYY-MM-DD" },
+        "isActive": { "type": "boolean", "description": "Active year flag" }
+      },
+      "required": ["yearName", "startDate", "endDate", "isActive"]
+    },
+    "SchoolSettings": {
+      "title": "SchoolSettings",
+      "description": "Madrasah identity and report signatories",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string", "description": "School name" },
+        "schoolAddress": { "type": "string", "description": "School address" },
+        "logoUrl": { "type": "string", "description": "School logo URL / base64" },
+        "principalName": { "type": "string", "description": "Principal name" },
+        "principalNip": { "type": "string", "description": "Principal NIP" },
+        "studentAffairsName": { "type": "string", "description": "Student affairs officer name" },
+        "studentAffairsNip": { "type": "string", "description": "Student affairs officer NIP" },
+        "reportPreparerName": { "type": "string", "description": "Report preparer name" },
+        "reportSignatoryTitle": { "type": "string", "description": "Report signatory title" },
+        "reportCity": { "type": "string", "description": "City of report issuance" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Updated timestamp" }
+      },
+      "required": ["schoolName", "schoolAddress", "principalName", "principalNip", "reportCity"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Audit trail log for administrative actions",
+      "type": "object",
+      "properties": {
+        "actorUserId": { "type": "string", "description": "User ID of the actor" },
+        "actorName": { "type": "string", "description": "Name of the actor" },
+        "actorRole": { "type": "string", "description": "Role of the actor" },
+        "action": { "type": "string", "description": "Action performed" },
+        "targetType": { "type": "string", "description": "Target entity type" },
+        "targetId": { "type": "string", "description": "Target ID" },
+        "details": { "type": "string", "description": "Details description" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Created timestamp" }
+      },
+      "required": ["actorUserId", "actorName", "action", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles"
+    },
+    "/classes/{classId}": {
+      "schema": "ClassItem",
+      "description": "Collection of classes"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Collection of students"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "AttendanceRecord",
+      "description": "Collection of daily attendance records"
+    },
+    "/academicYears/{yearId}": {
+      "schema": "AcademicYear",
+      "description": "Collection of academic years"
+    },
+    "/schoolSettings/{settingsId}": {
+      "schema": "SchoolSettings",
+      "description": "School settings document"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Collection of audit logs"
+    }
+  }
+}

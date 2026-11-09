@@ -1,0 +1,8 @@
+{
+  "name": "SIPRESMA — Presensi Siswa MAN 4 Kediri",
+  "description": "Sistem Informasi Presensi Madrasah MAN 4 Kediri: pencatatan kehadiran harian, rekapitulasi, cetak A4, ekspor Excel dan Word.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
