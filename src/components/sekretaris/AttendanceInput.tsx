@@ -10,17 +10,27 @@ import {
   XCircle,
   MessageSquare,
   HelpCircle,
+  Users,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { Student, UserProfile, AttendanceStatus, AttendanceRecord } from '../../types';
+import { Student, UserProfile, AttendanceStatus, AttendanceRecord, ClassItem, AcademicYear } from '../../types';
 
 interface Props {
   user: UserProfile;
   classIdOverride?: string; // If admin is helping input
+  activeAcademicYear?: string;
 }
 
-export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
-  const targetClassId = classIdOverride || user.assignedClassId;
+export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride, activeAcademicYear: propActiveYear }) => {
+  // Classes and Academic Year State
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>(
+    classIdOverride || user.assignedClassId || ''
+  );
+  const [activeAcademicYear, setActiveAcademicYear] = useState<string>(propActiveYear || '2025/2026');
+
+  // Attendance Form State
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -37,13 +47,71 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
   const [activeNoteStudent, setActiveNoteStudent] = useState<{ id: string; name: string } | null>(null);
   const [tempNote, setTempNote] = useState('');
 
-  const loadStudentsAndExisting = async (date: string) => {
-    if (!targetClassId) return;
+  // 1. Initial Load: Classes and Active Academic Year
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMetadata = async () => {
+      try {
+        const [classList, yearList] = await Promise.all([
+          api.getClasses(),
+          api.getAcademicYears(),
+        ]);
+
+        if (!isMounted) return;
+        setClasses(classList);
+
+        // Find active academic year
+        const activeYearObj = yearList.find((y) => y.isActive);
+        if (activeYearObj) {
+          setActiveAcademicYear(activeYearObj.yearName);
+        } else if (propActiveYear) {
+          setActiveAcademicYear(propActiveYear);
+        }
+
+        // Determine default selected class
+        if (!selectedClassId && classList.length > 0) {
+          if (classIdOverride) {
+            setSelectedClassId(classIdOverride);
+          } else if (user.assignedClassId) {
+            setSelectedClassId(user.assignedClassId);
+          } else {
+            // Admin defaults to first active class
+            setSelectedClassId(classList[0].id);
+          }
+        }
+      } catch (err: any) {
+        console.error('Gagal memuat metadata kelas/tahun ajaran:', err);
+      }
+    };
+
+    fetchMetadata();
+    return () => {
+      isMounted = false;
+    };
+  }, [user.assignedClassId, classIdOverride, propActiveYear]);
+
+  // Keep propActiveYear in sync if parent changes
+  useEffect(() => {
+    if (propActiveYear) {
+      setActiveAcademicYear(propActiveYear);
+    }
+  }, [propActiveYear]);
+
+  // 2. Load Students and Attendance Records for Selected Class & Date
+  const loadStudentsAndExisting = async (classId: string, date: string) => {
+    if (!classId) {
+      setStudents([]);
+      setExistingRecords([]);
+      setAttendanceMap({});
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const [stuList, attList] = await Promise.all([
-        api.getStudents({ classId: targetClassId, isActive: true }),
-        api.getAttendance({ classId: targetClassId, date }),
+        api.getStudents({ classId, isActive: true }),
+        api.getAttendance({ classId, date }),
       ]);
 
       setStudents(stuList);
@@ -68,8 +136,13 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
   };
 
   useEffect(() => {
-    loadStudentsAndExisting(selectedDate);
-  }, [targetClassId, selectedDate]);
+    if (selectedClassId) {
+      loadStudentsAndExisting(selectedClassId, selectedDate);
+    } else if (classes.length === 0) {
+      // If classes list is empty, stop loading
+      setLoading(false);
+    }
+  }, [selectedClassId, selectedDate]);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -118,8 +191,13 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
   };
 
   const handleSaveAttendance = async () => {
-    if (!targetClassId) {
-      showToast('error', 'Kelas belum ditentukan.');
+    if (!selectedClassId) {
+      showToast('error', 'Silakan pilih rombel kelas terlebih dahulu.');
+      return;
+    }
+
+    if (students.length === 0) {
+      showToast('error', 'Tidak ada siswa terdaftar di kelas ini.');
       return;
     }
 
@@ -154,13 +232,13 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
         }));
 
       const res = await api.saveBatchAttendance({
-        classId: targetClassId,
+        classId: selectedClassId,
         attendanceDate: selectedDate,
         items,
       });
 
       showToast('success', `Berhasil! ${res.message}`);
-      loadStudentsAndExisting(selectedDate);
+      loadStudentsAndExisting(selectedClassId, selectedDate);
     } catch (err: any) {
       showToast('error', err.message || 'Gagal menyimpan presensi');
     } finally {
@@ -180,6 +258,8 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
   }
 
   const isAlreadySaved = existingRecords.length > 0;
+  const currentClass = classes.find((c) => c.id === selectedClassId);
+  const currentClassName = currentClass?.className || user.assignedClassName || 'Kelas';
 
   return (
     <div className="space-y-5">
@@ -199,35 +279,59 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
 
       {/* Top Configuration & Date Selection */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-base font-black text-slate-900">
-                Input Presensi Kelas {user.assignedClassName || 'Binaan'}
+                Input Presensi {user.role === 'ADMIN' ? 'Siswa Madrasah' : `Kelas ${currentClassName}`}
               </span>
-              <span className="text-slate-300">·</span>
-              <span className="text-xs font-bold text-emerald-800">T.A. 2025/2026 (Ganjil)</span>
+              <span className="text-slate-300 hidden sm:inline">·</span>
+              <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
+                T.A. {activeAcademicYear} (Ganjil)
+              </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Petugas: <span className="font-semibold text-slate-700">{user.fullName}</span> · MAN 4 Kediri
+            <p className="text-xs text-slate-500">
+              Petugas: <span className="font-semibold text-slate-700">{user.fullName}</span> ({user.role === 'ADMIN' ? 'Administrator Utama' : `Sekretaris ${currentClassName}`}) · MAN 4 Kediri
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Class Selector Dropdown for Admin or Multi-Class Users */}
+            {(user.role === 'ADMIN' || !user.assignedClassId) && (
+              <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5">
+                <Users className="h-4 w-4 text-emerald-700 shrink-0" />
+                <span className="text-xs font-semibold text-slate-600 hidden sm:inline">Kelas:</span>
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => setSelectedClassId(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-hidden cursor-pointer"
+                >
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      Kelas {cls.className} ({cls.studentCount || 0} Siswa)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Date Picker */}
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5">
-              <Calendar className="h-4 w-4 text-emerald-700" />
+              <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="border-none bg-transparent text-xs font-bold text-slate-800 focus:outline-hidden"
+                className="border-none bg-transparent text-xs font-bold text-slate-800 focus:outline-hidden cursor-pointer"
               />
             </div>
 
+            {/* Mark All Present Quick Action */}
             <button
               type="button"
+              disabled={students.length === 0}
               onClick={handleMarkAllPresent}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors disabled:opacity-40 cursor-pointer"
             >
               <CheckCheck className="h-4 w-4 text-emerald-700" />
               <span>Tandai Semua Hadir</span>
@@ -277,14 +381,34 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-400">
-                    Memuat daftar siswa kelas...
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-700 border-t-transparent"></div>
+                      <span className="text-xs font-semibold">Memuat daftar siswa kelas...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : !selectedClassId ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Users className="h-8 w-8 text-slate-300" />
+                      <span className="text-xs font-semibold text-slate-600">Silakan pilih kelas terlebih dahulu untuk mengisi presensi.</span>
+                    </div>
                   </td>
                 </tr>
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-400">
-                    Belum ada siswa aktif terdaftar di kelas ini.
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <AlertCircle className="h-8 w-8 text-amber-500" />
+                      <span className="text-xs font-bold text-slate-700">
+                        Belum ada siswa aktif terdaftar di kelas {currentClassName}.
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Tambahkan siswa baru atau lakukan impor Excel melalui menu <strong>Data Siswa</strong>.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -319,7 +443,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
                           <button
                             type="button"
                             onClick={() => setStatusForStudent(student.id, 'H')}
-                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors ${
+                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors cursor-pointer ${
                               currentStatus === 'H'
                                 ? 'bg-emerald-700 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-white hover:text-slate-900'
@@ -332,7 +456,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
                           <button
                             type="button"
                             onClick={() => setStatusForStudent(student.id, 'S')}
-                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors ${
+                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors cursor-pointer ${
                               currentStatus === 'S'
                                 ? 'bg-blue-600 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-white hover:text-slate-900'
@@ -345,7 +469,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
                           <button
                             type="button"
                             onClick={() => setStatusForStudent(student.id, 'I')}
-                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors ${
+                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors cursor-pointer ${
                               currentStatus === 'I'
                                 ? 'bg-amber-500 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-white hover:text-slate-900'
@@ -358,7 +482,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
                           <button
                             type="button"
                             onClick={() => setStatusForStudent(student.id, 'A')}
-                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors ${
+                            className={`rounded-lg px-3 py-1 font-bold text-xs transition-colors cursor-pointer ${
                               currentStatus === 'A'
                                 ? 'bg-rose-600 text-white shadow-xs'
                                 : 'text-slate-600 hover:bg-white hover:text-slate-900'
@@ -375,7 +499,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
                           <button
                             type="button"
                             onClick={() => openNoteDialog(student)}
-                            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition ${
+                            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition cursor-pointer ${
                               notes
                                 ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
                                 : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
@@ -398,8 +522,9 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-slate-200 bg-slate-50/80 p-4">
           <div className="text-xs text-slate-500">
             {isAlreadySaved ? (
-              <span className="text-emerald-700 font-semibold">
-                ✓ Presensi tanggal ini sudah tersimpan. Klik tombol untuk menyimpan perubahan terbaru.
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span>Presensi kelas ini pada tanggal terpilih sudah tersimpan. Klik Simpan untuk memperbarui.</span>
               </span>
             ) : (
               <span>Presensi belum disimpan ke database permanen.</span>
@@ -410,7 +535,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
             type="button"
             disabled={saving || loading || students.length === 0}
             onClick={handleSaveAttendance}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-800 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-900 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-800 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-900 disabled:opacity-50 cursor-pointer"
           >
             <Save className="h-4 w-4" />
             <span>{saving ? 'Menyimpan...' : 'Simpan Presensi Kelas'}</span>
@@ -421,7 +546,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
       {/* MODAL: EDIT NOTES */}
       {activeNoteStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200">
             <h3 className="text-sm font-bold text-slate-900">
               Catatan Presensi Siswa
             </h3>
@@ -453,7 +578,7 @@ export const AttendanceInput: React.FC<Props> = ({ user, classIdOverride }) => {
               <button
                 type="button"
                 onClick={saveNoteDialog}
-                className="rounded-xl bg-emerald-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-900"
+                className="rounded-xl bg-emerald-800 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-900"
               >
                 Simpan Catatan
               </button>

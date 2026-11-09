@@ -28,6 +28,7 @@ interface Props {
   assignedClassId?: string | null;
   assignedClassName?: string | null;
   defaultMode?: 'daily' | 'monthly' | 'semester' | 'yearly' | 'custom';
+  activeAcademicYear?: string;
 }
 
 export const RecapView: React.FC<Props> = ({
@@ -35,7 +36,9 @@ export const RecapView: React.FC<Props> = ({
   assignedClassId,
   assignedClassName,
   defaultMode = 'monthly',
+  activeAcademicYear: propActiveYear,
 }) => {
+  const [activeAcademicYear, setActiveAcademicYear] = useState<string>(propActiveYear || '2025/2026');
   const [mode, setMode] = useState<'daily' | 'monthly' | 'semester' | 'yearly' | 'custom'>(
     defaultMode
   );
@@ -70,16 +73,27 @@ export const RecapView: React.FC<Props> = ({
 
   const loadInitial = async () => {
     try {
-      const [allClasses, schoolSettings] = await Promise.all([
+      const [allClasses, schoolSettings, yearList] = await Promise.all([
         api.getClasses(),
         api.getSettings(),
+        api.getAcademicYears(),
       ]);
       setClasses(allClasses);
       setSettings(schoolSettings);
+      const activeObj = yearList.find((y) => y.isActive);
+      if (activeObj) {
+        setActiveAcademicYear(activeObj.yearName);
+      } else if (propActiveYear) {
+        setActiveAcademicYear(propActiveYear);
+      }
     } catch (err) {
       console.error('Error loading recap options:', err);
     }
   };
+
+  useEffect(() => {
+    if (propActiveYear) setActiveAcademicYear(propActiveYear);
+  }, [propActiveYear]);
 
   useEffect(() => {
     loadInitial();
@@ -142,10 +156,10 @@ export const RecapView: React.FC<Props> = ({
       return `Bulan ${monthNames[parseInt(month, 10) - 1]} ${year}`;
     }
     if (mode === 'semester') {
-      return 'Semester Ganjil 2025/2026';
+      return `Semester Ganjil ${activeAcademicYear}`;
     }
     if (mode === 'yearly') {
-      return 'Tahun Ajaran 2025/2026';
+      return `Tahun Ajaran ${activeAcademicYear}`;
     }
     return `${startDate} s.d. ${endDate}`;
   };

@@ -125,9 +125,9 @@ export default function App() {
         case 'users':
           return <UserManagement />;
         case 'attendance':
-          return <AttendanceInput user={user} />;
+          return <AttendanceInput user={user} activeAcademicYear={activeAcademicYear} />;
         case 'recap':
-          return <RecapView role="ADMIN" />;
+          return <RecapView role="ADMIN" activeAcademicYear={activeAcademicYear} />;
         case 'report_settings':
           return <ReportSettings onSettingsUpdated={(s) => setSettings(s)} />;
         case 'app_settings':
@@ -146,7 +146,7 @@ export default function App() {
         case 'students':
           return <StudentManagement role="SEKRETARIS" assignedClassId={user.assignedClassId} />;
         case 'attendance_input':
-          return <AttendanceInput user={user} />;
+          return <AttendanceInput user={user} activeAcademicYear={activeAcademicYear} />;
         case 'attendance_history':
           return <AttendanceHistory user={user} />;
         case 'monthly_report':
@@ -156,6 +156,7 @@ export default function App() {
               assignedClassId={user.assignedClassId}
               assignedClassName={user.assignedClassName}
               defaultMode="monthly"
+              activeAcademicYear={activeAcademicYear}
             />
           );
         case 'profile':
@@ -170,19 +171,19 @@ export default function App() {
         case 'dashboard':
           return <KesiswaanDashboard onNavigate={setActiveTab} />;
         case 'recap_daily':
-          return <RecapView role="KESISWAAN" defaultMode="daily" />;
+          return <RecapView role="KESISWAAN" defaultMode="daily" activeAcademicYear={activeAcademicYear} />;
         case 'recap_monthly':
-          return <RecapView role="KESISWAAN" defaultMode="monthly" />;
+          return <RecapView role="KESISWAAN" defaultMode="monthly" activeAcademicYear={activeAcademicYear} />;
         case 'recap_semester':
-          return <RecapView role="KESISWAAN" defaultMode="semester" />;
+          return <RecapView role="KESISWAAN" defaultMode="semester" activeAcademicYear={activeAcademicYear} />;
         case 'recap_yearly':
-          return <RecapView role="KESISWAAN" defaultMode="yearly" />;
+          return <RecapView role="KESISWAAN" defaultMode="yearly" activeAcademicYear={activeAcademicYear} />;
         case 'recap_class':
-          return <RecapView role="KESISWAAN" defaultMode="monthly" />;
+          return <RecapView role="KESISWAAN" defaultMode="monthly" activeAcademicYear={activeAcademicYear} />;
         case 'recap_student':
-          return <RecapView role="KESISWAAN" defaultMode="semester" />;
+          return <RecapView role="KESISWAAN" defaultMode="semester" activeAcademicYear={activeAcademicYear} />;
         case 'print_reports':
-          return <RecapView role="KESISWAAN" defaultMode="monthly" />;
+          return <RecapView role="KESISWAAN" defaultMode="monthly" activeAcademicYear={activeAcademicYear} />;
         case 'profile':
           return <ProfileView user={user} />;
         default:

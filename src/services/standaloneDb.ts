@@ -310,13 +310,16 @@ export const standaloneService = {
   // ---------------------------------------------------------------------------
   async getClasses(): Promise<ClassItem[]> {
     const db = loadDatabase();
+    const activeYear = db.academicYears.find((y) => y.isActive);
     return db.classes.map((cls) => {
       const count = db.students.filter((s) => s.classId === cls.id && s.isActive).length;
       const sec = cls.secretaryUserId ? db.profiles.find((p) => p.id === cls.secretaryUserId) : null;
+      const year = db.academicYears.find((y) => y.id === cls.academicYearId) || activeYear;
       return {
         ...cls,
         studentCount: count,
         secretaryName: sec ? sec.fullName : null,
+        academicYearName: year ? year.yearName : '2025/2026',
       };
     });
   },
